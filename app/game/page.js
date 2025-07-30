@@ -1,6 +1,13 @@
 "use client";
+import dynamic from "next/dynamic";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  Suspense,
+} from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { puzzles } from "../../utils/puzzles";
 import { getAITaunt } from "../../utils/grok";
@@ -15,7 +22,8 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-export default function GamePage() {
+// -------- GamePage Component (inside Suspense wrapper) --------
+function GamePageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const difficulty = searchParams.get("difficulty") || "easy";
@@ -209,7 +217,7 @@ export default function GamePage() {
     } else {
       switchTurn();
     }
-  }, [currentTurn, solvedWords, words, aiScore, playerScore, gameOver]);
+  }, [currentTurn, solvedWords, words, aiScore, playerScore, gameOver, aiShouldWin]);
 
   useEffect(() => {
     if (currentTurn === "ai" && !gameOver && started) {
@@ -416,5 +424,14 @@ export default function GamePage() {
         </ul>
       </div>
     </div>
+  );
+}
+
+// ---------- Wrap the GamePageInner with Suspense ----------
+export default function GamePage() {
+  return (
+    <Suspense fallback={<div style={{ color: "white" }}>Loading...</div>}>
+      <GamePageInner />
+    </Suspense>
   );
 }
