@@ -1,0 +1,51 @@
+.crossword-grid {
+  display: inline-block;
+  margin: auto;
+}
+
+.grid-row {
+  display: flex;
+}
+
+.grid-cell {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #555;
+  background: #111;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.grid-cell.black {
+  background: black;
+  cursor: default;
+}
+
+.grid-cell.active {
+  border: 2px solid yellow;
+}
+
+.grid-cell.player {
+  background: #1e90ff;
+}
+
+.grid-cell.ai {
+  background: #ff4d4d;
+}
+
+.clue-number {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: 10px;
+  color: #fff;
+}
+
+.letter {
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+}
