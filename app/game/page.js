@@ -1,6 +1,5 @@
 "use client";
 import dynamic from "next/dynamic";
-
 import React, {
   useState,
   useEffect,
@@ -11,8 +10,6 @@ import React, {
 import { useSearchParams, useRouter } from "next/navigation";
 import { puzzles } from "../../utils/puzzles";
 import { getAITaunt } from "../../utils/grok";
-
-// Firebase
 import { db } from "../../firebase/firebaseConfig";
 import {
   collection,
@@ -22,7 +19,6 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-// -------- GamePage Component (inside Suspense wrapper) --------
 function GamePageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -42,11 +38,9 @@ function GamePageInner() {
   const [timeLeft, setTimeLeft] = useState(20);
   const [gameOver, setGameOver] = useState(false);
   const [started, setStarted] = useState(false);
-
   const [gameId, setGameId] = useState(null);
   const [aiShouldWin, setAiShouldWin] = useState(Math.random() > 0.5);
 
-  // ---------------- INIT ----------------
   useEffect(() => {
     if (!puzzle) return;
     const gridArr = Array(puzzle.gridSize)
@@ -72,14 +66,12 @@ function GamePageInner() {
     setStarted(false);
   }, [puzzle]);
 
-  // ---------------- START ----------------
   const startGame = async () => {
     const userFirst = window.confirm("Do you want to play first?");
     setCurrentTurn(userFirst ? "player" : "ai");
     setTimeLeft(20);
     setStarted(true);
 
-    // Create new game in Firestore
     const gameRef = await addDoc(collection(db, "games"), {
       puzzle_id: puzzle.id,
       player_score: 0,
@@ -92,7 +84,6 @@ function GamePageInner() {
     setGameId(gameRef.id);
   };
 
-  // ---------------- TIMER ----------------
   useEffect(() => {
     if (!started || gameOver) return;
     if (timeLeft <= 0) {
@@ -110,7 +101,6 @@ function GamePageInner() {
     setCurrentTurn((prev) => (prev === "player" ? "ai" : "player"));
   };
 
-  // ---------------- FIREBASE ----------------
   const updateFirebaseState = async (winner = null) => {
     if (!gameId) return;
     await updateDoc(doc(db, "games", gameId), {
@@ -133,7 +123,6 @@ function GamePageInner() {
     }
   };
 
-  // ---------------- SELECT WORD ----------------
   const handleSelectWord = (word) => {
     if (gameOver || currentTurn !== "player") return;
     if (solvedWords.includes(word.id)) return;
@@ -142,7 +131,6 @@ function GamePageInner() {
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  // ---------------- SUBMIT ----------------
   const handleSubmit = async () => {
     if (!selectedWord || gameOver || currentTurn !== "player") return;
 
@@ -156,7 +144,6 @@ function GamePageInner() {
     }
 
     await updateFirebaseState();
-
     setSelectedWord(null);
     setTypedWord("");
 
@@ -167,7 +154,6 @@ function GamePageInner() {
     }
   };
 
-  // ---------------- GRID UPDATE ----------------
   const updateGridWithWord = (word, wordObj) => {
     setGrid((prevGrid) => {
       const newGrid = prevGrid.map((row) => [...row]);
@@ -180,7 +166,6 @@ function GamePageInner() {
     });
   };
 
-  // ---------------- AI LOGIC ----------------
   const handleAISolve = useCallback(async () => {
     if (gameOver || currentTurn !== "ai") return;
 
@@ -190,10 +175,11 @@ function GamePageInner() {
       return;
     }
 
-    // Random skip logic
     if (!aiShouldWin && Math.random() < 0.3) {
       addChat("AI: Hmm... I'll skip!");
-      switchTurn();
+      setTimeout(() => {
+        switchTurn();
+      }, 500);
       return;
     }
 
@@ -212,23 +198,22 @@ function GamePageInner() {
 
     await updateFirebaseState();
 
-    if (solvedWords.length + 1 === words.length) {
-      endGame("ai");
-    } else {
+    setTimeout(() => {
       switchTurn();
-    }
+    }, 800);
   }, [currentTurn, solvedWords, words, aiScore, playerScore, gameOver, aiShouldWin]);
 
   useEffect(() => {
     if (currentTurn === "ai" && !gameOver && started) {
-      handleAISolve();
+      const aiMoveTimeout = setTimeout(() => {
+        handleAISolve();
+      }, 1000);
+      return () => clearTimeout(aiMoveTimeout);
     }
   }, [currentTurn, handleAISolve, gameOver, started]);
 
-  // ---------------- END GAME ----------------
   const endGame = async (winner = null) => {
     setGameOver(true);
-
     let result = "";
     if (winner === "player") {
       result = "🎉 You Win!";
@@ -253,181 +238,225 @@ function GamePageInner() {
     }, 300);
   };
 
-  // ---------------- RENDER ----------------
+  
+// Common button style
+const buttonStyle = {
+  padding: "8px 15px",
+  margin: "5px",
+  backgroundColor: "#2196F3",
+  color: "white",
+  border: "none",
+  borderRadius: "5px",
+  cursor: "pointer",
+};
+
   return (
-    <div style={{ textAlign: "center", color: "white" }}>
-      <h2>Crossword Battle Arena ({difficulty})</h2>
-      {!started && (
-        <button onClick={startGame} style={{ margin: "10px" }}>
-          Start Game
-        </button>
-      )}
+  <div
+    style={{
+      minHeight: "100vh",
+      backgroundColor: "white",
+      color: "#222",
+      textAlign: "center",
+      fontFamily: "Arial, sans-serif",
+      padding: "20px",
+    }}
+  >
+    <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px" }}>
+      Crossword Battle Arena ({difficulty})
+    </h2>
 
-      {started && (
-        <>
-          <h3 style={{ color: "yellow" }}>
-            Player: {playerScore} | AI: {aiScore} | Time: {timeLeft}
-          </h3>
-          <h3 style={{ color: "orange" }}>
-            {currentTurn === "player" ? "👉 Your turn" : "🤖 AI turn"}
-          </h3>
-        </>
-      )}
-
-      {/* GRID */}
-      <div
+    {!started && (
+      <button
+        onClick={startGame}
         style={{
-          display: "inline-grid",
-          gridTemplateColumns: `repeat(${puzzle.gridSize}, 40px)`,
-          gridGap: "2px",
-          margin: "15px auto",
-          backgroundColor: "#000",
-          padding: "5px",
+          padding: "10px 20px",
+          backgroundColor: "#4CAF50",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          fontSize: "1rem",
+          cursor: "pointer",
+          margin: "10px 0",
         }}
       >
-        {grid.map((row, rIdx) =>
-          row.map((cell, cIdx) => {
-            const wordAt = words.find((w) => {
-              for (let i = 0; i < w.word.length; i++) {
-                const rr = w.row + (w.horizontal ? 0 : i);
-                const cc = w.col + (w.horizontal ? i : 0);
-                if (rr === rIdx && cc === cIdx) return true;
-              }
-              return false;
-            });
-            const number =
-              wordAt && wordAt.row === rIdx && wordAt.col === cIdx
-                ? wordAt.id
-                : "";
+        Start Game
+      </button>
+    )}
 
-            const isActiveCell =
-              selectedWord &&
-              wordAt &&
-              selectedWord.id === wordAt.id &&
-              currentTurn === "player";
-
-            return (
-              <div
-                key={`${rIdx}-${cIdx}`}
-                onClick={() => wordAt && handleSelectWord(wordAt)}
-                style={{
-                  width: 40,
-                  height: 40,
-                  border: "1px solid #999",
-                  backgroundColor: wordAt
-                    ? isActiveCell
-                      ? "#666600"
-                      : "#333"
-                    : "#000",
-                  position: "relative",
-                  color: "white",
-                  fontWeight: "bold",
-                  fontSize: "18px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: wordAt ? "pointer" : "default",
-                }}
-              >
-                {number && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 2,
-                      left: 4,
-                      fontSize: "10px",
-                      color: "yellow",
-                    }}
-                  >
-                    {number}
-                  </span>
-                )}
-                {cell}
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {started && (
-        <div>
-          <input
-            ref={inputRef}
-            type="text"
-            value={typedWord}
-            onChange={(e) => setTypedWord(e.target.value.toUpperCase())}
-            disabled={currentTurn !== "player" || !selectedWord}
-          />
-          <button onClick={handleSubmit}>Submit</button>
-          <button onClick={switchTurn}>Pass Turn</button>
-          <button onClick={() => router.push("/")}>New Game</button>
-        </div>
-      )}
-
-      {/* CLUES */}
-      {started && (
-        <div
+    {started && (
+      <>
+        <h3 style={{ color: "#333", fontWeight: "500" }}>
+          Player: {playerScore} | AI: {aiScore} | Time: {timeLeft}
+        </h3>
+        <h3
           style={{
-            display: "flex",
-            justifyContent: "space-around",
-            marginTop: "15px",
+            color: currentTurn === "player" ? "#4CAF50" : "#F44336",
+            fontWeight: "bold",
           }}
         >
-          <div style={{ textAlign: "left" }}>
-            <b>Across</b>
-            <ul style={{ listStyle: "none" }}>
-              {words
-                .filter((w) => w.horizontal)
-                .map((w) => (
-                  <li
-                    key={w.id}
-                    onClick={() => handleSelectWord(w)}
-                    style={{
-                      cursor: "pointer",
-                      color: solvedWords.includes(w.id) ? "gray" : "yellow",
-                    }}
-                  >
-                    {w.id}. {w.clue}
-                  </li>
-                ))}
-            </ul>
-          </div>
-          <div style={{ textAlign: "left" }}>
-            <b>Down</b>
-            <ul style={{ listStyle: "none" }}>
-              {words
-                .filter((w) => !w.horizontal)
-                .map((w) => (
-                  <li
-                    key={w.id}
-                    onClick={() => handleSelectWord(w)}
-                    style={{
-                      cursor: "pointer",
-                      color: solvedWords.includes(w.id) ? "gray" : "yellow",
-                    }}
-                  >
-                    {w.id}. {w.clue}
-                  </li>
-                ))}
-            </ul>
-          </div>
-        </div>
-      )}
+          {currentTurn === "player" ? "👉 Your turn" : "🤖 AI turn"}
+        </h3>
+      </>
+    )}
 
-      {/* CHAT */}
-      <div style={{ marginTop: "20px" }}>
-        <b>Chat</b>
-        <ul style={{ listStyle: "none" }}>
-          {chat.map((c, idx) => (
-            <li key={idx}>{c}</li>
-          ))}
-        </ul>
+    {/* Crossword Grid */}
+    <div
+  style={{
+    display: "inline-grid",
+    gridTemplateColumns: `repeat(${puzzle.gridSize}, 40px)`,
+    gridGap: "2px",
+    margin: "15px auto",
+    backgroundColor: "#000",
+    padding: "5px",
+    borderRadius: "8px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+  }}
+>
+  {Array.from({ length: puzzle.gridSize }).map((_, rIdx) =>
+    Array.from({ length: puzzle.gridSize }).map((_, cIdx) => {
+      // Check if a word exists at this cell
+      const wordAtCell = words.find(
+        (w) =>
+          rIdx >= w.row &&
+          rIdx < w.row + (w.horizontal ? 1 : w.word.length) &&
+          cIdx >= w.col &&
+          cIdx < w.col + (w.horizontal ? w.word.length : 1)
+      );
+
+      const isBlack = !wordAtCell;
+      const isSolved = wordAtCell && solvedWords.includes(wordAtCell.id);
+
+      let letter = "";
+      if (isSolved && wordAtCell) {
+        const offset = wordAtCell.horizontal
+          ? cIdx - wordAtCell.col
+          : rIdx - wordAtCell.row;
+        letter = wordAtCell.word[offset];
+      }
+
+      return (
+        <div
+          key={`${rIdx}-${cIdx}`}
+          style={{
+            width: "40px",
+            height: "40px",
+            backgroundColor: isBlack ? "#333" : "#fff",
+            border: "1px solid #000",
+            color: "#000",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: "bold",
+            fontSize: "18px",
+            cursor:
+              !isBlack && currentTurn === "player"
+                ? "pointer"
+                : "default",
+          }}
+          onClick={() => {
+            if (wordAtCell && !isBlack && currentTurn === "player") {
+              handleSelectWord(wordAtCell);
+            }
+          }}
+        >
+          {letter}
+        </div>
+      );
+    })
+  )}
+</div>
+
+    {/* Input & Buttons */}
+    {started && (
+      <div style={{ marginTop: "15px" }}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={typedWord}
+          onChange={(e) => setTypedWord(e.target.value.toUpperCase())}
+          disabled={currentTurn !== "player" || !selectedWord}
+          style={{
+            padding: "8px",
+            fontSize: "1rem",
+            borderRadius: "5px",
+            border: "1px solid #ccc",
+            marginRight: "10px",
+          }}
+        />
+        <button style={buttonStyle} onClick={handleSubmit}>Submit</button>
+        <button style={buttonStyle} onClick={switchTurn}>Pass Turn</button>
+        <button style={buttonStyle} onClick={() => router.push("/")}>New Game</button>
       </div>
+    )}
+
+    {/* Clues */}
+    {started && (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-around",
+          marginTop: "20px",
+          textAlign: "left",
+          maxWidth: "800px",
+          marginInline: "auto",
+        }}
+      >
+        <div>
+          <b>Across</b>
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {words
+              .filter((w) => w.horizontal)
+              .map((w) => (
+                <li
+                  key={w.id}
+                  onClick={() => handleSelectWord(w)}
+                  style={{
+                    cursor: "pointer",
+                    color: solvedWords.includes(w.id) ? "#bbb" : "#333",
+                  }}
+                >
+                   {w.id}. {w.clue} ({w.word.length} letters)
+                </li>
+              ))}
+          </ul>
+        </div>
+        <div>
+          <b>Down</b>
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {words
+              .filter((w) => !w.horizontal)
+              .map((w) => (
+                <li
+                  key={w.id}
+                  onClick={() => handleSelectWord(w)}
+                  style={{
+                    cursor: "pointer",
+                    color: solvedWords.includes(w.id) ? "#bbb" : "#333",
+                  }}
+                >
+                  {w.id}. {w.clue} ({w.word.length} letters)
+                </li>
+              ))}
+          </ul>
+        </div>
+      </div>
+    )}
+
+    {/* Chat */}
+    <div style={{ marginTop: "20px", maxWidth: "600px", marginInline: "auto" }}>
+      <b>Chat</b>
+      <ul style={{ listStyle: "none", padding: 0, color: "#555" }}>
+        {chat.map((c, idx) => (
+          <li key={idx}>{c}</li>
+        ))}
+      </ul>
     </div>
-  );
+  </div>
+);
+
+
 }
 
-// ---------- Wrap the GamePageInner with Suspense ----------
 export default function GamePage() {
   return (
     <Suspense fallback={<div style={{ color: "white" }}>Loading...</div>}>

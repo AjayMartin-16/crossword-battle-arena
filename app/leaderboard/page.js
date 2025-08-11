@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import { db } from "../../firebase/firebaseConfig";
-
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import Link from "next/link";
 
@@ -23,44 +22,37 @@ export default function LeaderboardPage() {
   }, []);
 
   return (
-    <div style={{ textAlign: "center", color: "white", padding: "20px" }}>
-      <h2>🏆 Leaderboard</h2>
+    <div style={styles.container}>
+      <h2 style={styles.title}>🏆 Leaderboard</h2>
       <Link href="/">
-        <button style={{ marginBottom: "20px" }}>← Back to Home</button>
+        <button style={styles.backButton}>← Back to Home</button>
       </Link>
 
       {games.length === 0 ? (
-        <p>No games played yet.</p>
+        <p style={styles.noData}>No games played yet.</p>
       ) : (
-        <table
-          style={{
-            margin: "0 auto",
-            borderCollapse: "collapse",
-            backgroundColor: "#222",
-            color: "white",
-          }}
-        >
+        <table style={styles.table}>
           <thead>
-            <tr style={{ backgroundColor: "#444" }}>
-              <th style={thStyle}>Game ID</th>
-              <th style={thStyle}>Puzzle</th>
-              <th style={thStyle}>Player Score</th>
-              <th style={thStyle}>AI Score</th>
-              <th style={thStyle}>Winner</th>
-              <th style={thStyle}>Status</th>
+            <tr style={styles.headerRow}>
+              <th style={styles.th}>Game ID</th>
+              <th style={styles.th}>Puzzle</th>
+              <th style={styles.th}>Player Score</th>
+              <th style={styles.th}>AI Score</th>
+              <th style={styles.th}>Winner</th>
+              <th style={styles.th}>Status</th>
             </tr>
           </thead>
           <tbody>
             {games.map((game) => (
               <tr key={game.id}>
-                <td style={tdStyle}>{game.id}</td>
-                <td style={tdStyle}>{game.puzzle_id}</td>
-                <td style={tdStyle}>{game.player_score}</td>
-                <td style={tdStyle}>{game.ai_score}</td>
-                <td style={tdStyle}>
+                <td style={styles.td}>{game.id}</td>
+                <td style={styles.td}>{game.puzzle_id}</td>
+                <td style={styles.td}>{game.player_score}</td>
+                <td style={styles.td}>{game.ai_score}</td>
+                <td style={styles.td}>
                   {game.winner ? (game.winner === "player" ? "You" : "AI") : "-"}
                 </td>
-                <td style={tdStyle}>{game.game_status}</td>
+                <td style={styles.td}>{game.game_status}</td>
               </tr>
             ))}
           </tbody>
@@ -70,12 +62,54 @@ export default function LeaderboardPage() {
   );
 }
 
-const thStyle = {
-  border: "1px solid #666",
-  padding: "8px",
-};
-
-const tdStyle = {
-  border: "1px solid #666",
-  padding: "8px",
+const styles = {
+  container: {
+    height: "100vh",
+    backgroundColor: "white",
+    color: "#222",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "20px",
+    fontFamily: "Arial, sans-serif",
+  },
+  title: {
+    fontSize: "2rem",
+    fontWeight: "bold",
+    marginBottom: "15px",
+  },
+  backButton: {
+    marginBottom: "20px",
+    padding: "10px 20px",
+    backgroundColor: "#2196F3",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+  noData: {
+    fontSize: "1.2rem",
+    color: "#777",
+  },
+  table: {
+    borderCollapse: "collapse",
+    backgroundColor: "white",
+    color: "#333",
+    width: "90%",
+    maxWidth: "800px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+  },
+  headerRow: {
+    backgroundColor: "#f4f4f4",
+  },
+  th: {
+    border: "1px solid #ccc",
+    padding: "10px",
+    textAlign: "center",
+  },
+  td: {
+    border: "1px solid #ccc",
+    padding: "10px",
+    textAlign: "center",
+  },
 };
